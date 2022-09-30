@@ -1,5 +1,7 @@
 module namespace jn-users = "http://www.architextus.com/xquery/library/users-management/jn-users";
 import module namespace users = "http://www.architextus.com/xquery/library/users-management/users" at "users.xqm";
+import module namespace flatjson = "http://www.architextus.com/xquery/library/users-management/user2att" at "user2attributes.xqm";
+
 
 
 declare namespace file = 'http://expath.org/ns/file'; 
@@ -10,8 +12,11 @@ declare namespace rest ="http://exquery.org/ns/restxq";
 declare namespace update ='http://basex.org/modules/update';
 declare namespace web = 'http://basex.org/modules/web';
 
-
+declare variable $jn-users:jn-serialize-options := map {
+    'format': 'jsonml'
+};
 (: Returns the new user as json :)
+(: Expects password to be hashed, will save as is without further encrypting:)
 declare %updating
     %rest:path('/users/user')
     %rest:GET
@@ -23,12 +28,13 @@ declare %updating
     %rest:query-param('password', '{$password}', '')
     %rest:query-param('google-profile-id', '{$google-profile-id}', '')
     %rest:query-param('step', '{$step}', 1)
-    %output:method('xhtml')
-    %output:html-version('5.0')
+    %output:method('json')
+    (:%output:html-version('5.0'):)
 function jn-users:jn-add($fname as xs:string, $mname as xs:string, 
     $lname1 as xs:string, $lname2 as xs:string, 
     $email as xs:string, $password as xs:string, 
     $google-profile-id as xs:string, $step as xs:integer) {
+    (: TODO: validate that fname, lname and email are provided and valid:)
     try {
         let $debug := trace('In jn-add, step... ' || $step)
         let $steps := <steps>
@@ -49,28 +55,52 @@ function jn-users:jn-add($fname as xs:string, $mname as xs:string,
             case 'return-user' return 
                 let $debug := trace('case return-user') 
                 let $user := users:get-by-email($email)
+                (:let $jn-user := json:serialize($user, $jn-users:jn-serialize-options):)
+                let $jn-user := flatjson:transform($user)
+
+                (:let $jn-user := json:serialize($user, $jn-users:jn-serialize-options):)
+                let $debug := trace('*** User and jn-user')
+           
+                let $debug := trace($jn-user)
                 return (
                     (), 
-                    update:output(<div>User: {$user}</div>)
+                    update:output($jn-user)
                 )
             default return 
-             let $message := <div>error too far</div>
+             let $message := <div>Sign up got one step too far</div>
              return 
-                 ((), update:output($message))
+                 ((), web:error('400', $message))
      } catch * {
         (
             web:error(400, $err:description)
         )
         
-        (:$err:code error code
-$err:description: error message
-$err:value: value associated with the error (optional)
-$err:module: URI of the module where the error occurred
-$err:line-number: line number where the error occurred
-$err:column-number: column number where the error occurred
-$err:additional: error stack trace:)
+        (:
+        TODO: Define standard for sending errors with BX. We could send .have a send details to admin or something
+        .   $err:code error code
+            $err:description: error message
+            $err:value: value associated with the error (optional)
+            $err:module: URI of the module where the error occurred
+            $err:line-number: line number where the error occurred
+            $err:column-number: column number where the error occurred
+            $err:additional: error stack trace:)
         
         
         
      }
+};
+
+declare
+    %rest:path('/users/user/by-email')
+    %rest:GET
+    %rest:query-param('email', '{$email}', '')
+    %output:method('json')
+    (:%output:html-version('5.0'):)
+function jn-users:jn-get-by-email($email as xs:string) {
+    let $user := users:get-by-email($email)
+    (:let $jn-user := json:serialize($user, $jn-users:jn-serialize-options):)
+    let $jn-user := flatjson:transform($user)
+    let $debug := trace('JSON GET BY EMAIL')
+    let $debug := trace($jn-user)
+    return $jn-user
 };

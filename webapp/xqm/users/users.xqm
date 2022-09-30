@@ -40,8 +40,8 @@ declare updating function users:add ($fname as xs:string, $mname as xs:string,
                     db:add('users', $user, $user-id || '.xml')
 };
 
-declare function users:get-by-email ($email) as xs:string* {
-    let $user := db:get('users')//*[name()='email'][. = $email]
+declare function users:get-by-email ($email) as node()* {
+    let $user := db:get('users')/*[descendant::*[name()='email'][. = $email]]
     return 
         if (count($user) = 1)
         then $user
