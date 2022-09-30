@@ -104,3 +104,18 @@ function jn-users:jn-get-by-email($email as xs:string) {
     let $debug := trace($jn-user)
     return $jn-user
 };
+
+declare
+    %rest:path('/users/user/by-id')
+    %rest:GET
+    %rest:query-param('id', '{$id}', '')
+    %output:method('json')
+    (:%output:html-version('5.0'):)
+function jn-users:jn-get-by-id($id as xs:string) {
+    let $user := users:get-by-id($id)
+    (:let $jn-user := json:serialize($user, $jn-users:jn-serialize-options):)
+    let $jn-user := flatjson:transform($user)
+    let $debug := trace('JSON GET BY ID')
+    let $debug := trace($jn-user)
+    return $jn-user
+};

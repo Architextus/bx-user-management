@@ -48,6 +48,14 @@ declare function users:get-by-email ($email) as node()* {
         else ()
 };
 
+declare function users:get-by-id ($id) as node()* {
+    let $user := db:get('users')/*[descendant::*[name()='id'][. = $id]]
+    return 
+        if (count($user) = 1)
+        then $user
+        else ()
+};
+
 declare function users:create-unique-id () as xs:string {
     let $debug := trace('In create-unique-id')
     let $date-string := format-dateTime(current-dateTime(), "[Y01][M01][D01][H01][m01][s01]")
