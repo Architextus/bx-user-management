@@ -90,6 +90,60 @@ function jn-users:jn-add($fname as xs:string, $mname as xs:string,
      }
 };
 
+declare %updating
+    %rest:path('users/user/set-google-profile-id')
+    %rest:GET
+    %rest:query-param('id', '{$id}', '')
+    %rest:query-param('google-profile-id', '{$google-profile-id}', '')
+    %rest:query-param('step', '{$step}', 1)
+    %output:method('json')
+function jn-users:set-google-profile-id($id as xs:string, $google-profile-id as xs:string, $step as xs:integer) {
+    try {
+        let $debug := trace('set profile id 1 for $id: ' || $id  || ' profile: ' || $google-profile-id)
+        let $steps := <steps>
+            <step>add-value</step>
+            <step>return-user</step>
+        </steps>
+        let $debug := trace('set profile id 2')
+        let $step-name := $steps/self::*/*[name()='step'][$step]/text()
+        let $debug := trace('set profile id 3  stepname is: '  )
+        let $debug := trace($step-name)
+        let $next-step-num := $step + 1
+        let $debug := trace('set profile id 4')
+        let $next-call := '/users/user/set-google-profile-id?id=' || $id || '&amp;google-profile-id=' || $google-profile-id || '&amp;step=' || $next-step-num
+        let $debug := trace('set profile id 5')
+        return 
+            switch($step-name)
+            case 'add-value' return (
+                let $debug := trace('set profile id 6 ' || $id || ' - ' || $google-profile-id)
+                return( 
+                   users:set-google-profile-id($id, $google-profile-id), 
+                   update:output($next-call)
+                )
+            )
+            case 'return-user' return 
+                let $debug := trace('set profile id 7')
+                let $user := users:get-by-id($id)
+                let $debug := trace ($user)
+                let $jn-user := flatjson:transform($user)
+                let $debug := trace ($jn-users:jn-serialize-options) 
+                return (
+                    (), 
+                    update:output($jn-user)
+                )
+            default return 
+             let $message := <div>Set google-profile-id is one step too far</div>
+             return 
+                 ((), web:error('400', $message))
+    
+    }
+    catch * {
+        let $debug := trace('set profile id 8 at line:' || $err:line-number)
+        return 
+            web:error(400, $err:description)
+    }
+};
+
 declare
     %rest:path('/users/user/by-email')
     %rest:GET
@@ -101,6 +155,22 @@ function jn-users:jn-get-by-email($email as xs:string) {
     (:let $jn-user := json:serialize($user, $jn-users:jn-serialize-options):)
     let $jn-user := flatjson:transform($user)
     let $debug := trace('JSON GET BY EMAIL')
+    let $debug := trace($jn-user)
+    return $jn-user
+};
+
+
+declare
+    %rest:path('/users/user/by-google-profile-id')
+    %rest:GET
+    %rest:query-param('google-profile-id', '{$google-profile-id}', '')
+    %output:method('json')
+    (:%output:html-version('5.0'):)
+function jn-users:jn-get-by-google-profile-id($google-profile-id as xs:string) {
+    let $user := users:get-by-google-profile-id($google-profile-id)
+    (:let $jn-user := json:serialize($user, $jn-users:jn-serialize-options):)
+    let $jn-user := flatjson:transform($user)
+    let $debug := trace('JSON GET BY google-profile-id')
     let $debug := trace($jn-user)
     return $jn-user
 };

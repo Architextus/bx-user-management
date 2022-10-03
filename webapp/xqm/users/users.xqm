@@ -40,7 +40,30 @@ declare updating function users:add ($fname as xs:string, $mname as xs:string,
                     db:add('users', $user, $user-id || '.xml')
 };
 
-declare function users:get-by-email ($email) as node()* {
+declare updating function users:set-google-profile-id($id as xs:string, $google-profile-id as xs:string) {
+    let $debug := trace('Adding google profile id ' || $google-profile-id || ' to user ' || $id)
+    let $user := users:get-by-id($id)
+    let $debug := trace($user)
+    return 
+        if (count($user) = 1)
+        then 
+            let $debug := trace('Found user, adding value')
+            let $new-user := 
+                copy $copy := $user
+                modify (
+                    let $debug := trace('fname' || $copy/self::*/contact/fname) return
+                   replace value of node $copy/self::*/oauth/google-profile-id with $google-profile-id
+                )
+                return $copy
+            let $debug := trace($new-user)
+            let $subpath := substring-after($user/base-uri(), 'users')
+            let $debug := trace('Saving at ' || $subpath)
+            return db:put ('users', $new-user, $subpath)
+        else error(xs:QName('usrerr:USREXST'), 'User does not exist (' || count($user) || ')' )
+
+};
+
+declare function users:get-by-email ($email as xs:string) as node()* {
     let $user := db:get('users')/*[descendant::*[name()='email'][. = $email]]
     return 
         if (count($user) = 1)
@@ -48,8 +71,16 @@ declare function users:get-by-email ($email) as node()* {
         else ()
 };
 
-declare function users:get-by-id ($id) as node()* {
-    let $user := db:get('users')/*[descendant::*[name()='id'][. = $id]]
+declare function users:get-by-google-profile-id ($google-profile-id as xs:string) as node()* {
+    let $user := db:get('users')/*[descendant::*[name()='google-profile-id'][. = $google-profile-id]]
+    return 
+        if (count($user) = 1)
+        then $user
+        else ()
+};
+
+declare function users:get-by-id ($id as xs:string) as node()* {
+    let $user := db:get('users')/*[@id=$id]
     return 
         if (count($user) = 1)
         then $user

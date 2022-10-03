@@ -30,6 +30,9 @@ declare function flatjson:transform($nodes as node()*) as xs:string {
                     else '"' || $node/name() || '":"' || $down || '"'
             default return ()
         let $debug := trace ('Returning ' || string-join($level, ', '))
-        return string-join($level, ', ')), 
+        return 
+            if (normalize-space($level) != '')
+            then string-join($level, ', ')
+            else ()), 
         ', ')
 };
